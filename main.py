@@ -1,6 +1,6 @@
 import classe_grafo as cg
-import os
 from rich.console import Console
+import os
 
 if __name__ == "__main__":
     

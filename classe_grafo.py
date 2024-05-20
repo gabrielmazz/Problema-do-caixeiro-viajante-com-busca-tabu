@@ -70,30 +70,27 @@ class grafo():
               
     def solucao_inicial_busca_tabu(self):
         
-        # -> Função para encontrar um caminho Hamiltoniano, o caminho é feito 
-        # em um grafo é um caminho que visita cada vértice exatamente uma vez
-        
         # Randomiza o vértice inicial
-        initial_vertex = random.choice(list(self.grafo.nodes()))
-        
+        initial_vertex = 1
+            
         # Cria uma lista de tuplas, onde cada tupla contém o caminho
         F = [(self.grafo,[initial_vertex])]
-        
+            
         # Número de vértices no grafo
         n = self.grafo.number_of_nodes()
-        
+            
         # Enquanto a lista F não estiver vazia, percorre a lista
         while F:
-            
+                
             # Extrai de F a tupla (grafo, caminho)
             graph,path = F.pop()
-            
+                
             # Configuração de caminhos
             confs = []
-            
+                
             # Itera sobre os vizinhos do último vértice do caminho
             for node in graph.neighbors(path[-1]):
-                
+                    
                 # A variável conf_p é uma cópia da lista path com o último nó
                 # adicionado. A variável conf_g é uma cópia do grafo graph com 
                 # o último nó removido.
@@ -102,19 +99,22 @@ class grafo():
                 conf_g = nx.Graph(graph)
                 conf_g.remove_node(path[-1])
                 confs.append((conf_g,conf_p))
-                
-            # Se o caminho tiver o mesmo número de vértices que o grafo, retorna
-            # o caminho (solução inicial), senão, adiciona as configurações na lista F
-            # formando o caminho
+                    
+            # Se o caminho tiver o mesmo número de vértices que o grafo, verifica
+            # se o último vértice do caminho é adjacente ao vértice inicial
             for g,p in confs:
                 if len(p)==n:
-                    return p
-                
+                    if initial_vertex in list(self.grafo.neighbors(p[-1])):
+                        p.append(initial_vertex)
+                        return p
+                    
                 else:
                     F.append((g,p))
-                
-        return None
-           
+                    
+        # Se a função chegar a este ponto, nenhum ciclo foi encontrado.
+        # Então, chama a função novamente para tentar encontrar um ciclo.
+        return self.solucao_inicial_busca_tabu()
+         
     def encontra_vizinhos(self, caminho):
         
         # -> Função para encontrar os vizinhos de um caminho dado
@@ -154,7 +154,7 @@ class grafo():
         for caminho in vizinhos:
             valido = all(self.grafo.has_edge(caminho[i], caminho[i+1]) for i in range(len(caminho) - 1))
             
-            if valido:
+            if valido and caminho[0] == caminho[-1]:
                 vizinhos_validos.append(caminho)
                 
         return vizinhos_validos
@@ -164,10 +164,16 @@ class grafo():
         # Marca o tempo de início
         start = time.time()
         
+        # Marca o tempo para achar a solução inicial
+        start_solucao_inicial = time.time()
+        
         self.solucao_inicial = self.solucao_inicial_busca_tabu()
 
         # Calcula o custo do caminho
         self.custo_solucao_inicial = self.custo_distancia_total(self.solucao_inicial)
+        
+        # Marca o tempo de término
+        end_solucao_inicial = time.time()
         
         # Inicializa o melhor caminho encontrado e o melhor custo
         melhor_caminho = self.solucao_inicial
@@ -177,6 +183,10 @@ class grafo():
         # mesmo que esse caminho não seja o melhor caminho no final da busca
         melhor_caminho_encontrado = melhor_caminho
         melhor_custo_encontrado = melhor_custo
+
+        # Variaveis para salvar o pior caminho e o pior custo encontrado durante a busca
+        pior_caminho = melhor_caminho
+        pior_custo = melhor_custo
 
         # Inicializa a lista tabu
         tabu = []
@@ -193,15 +203,19 @@ class grafo():
             # Ordena os vizinhos por custo
             heapq.heapify(vizinhos)
             
+            # Verifica os vizinhos validos
             vizinhos_validos = self.verifica_vizinhos_validos(vizinhos)
             
             # Enquanto houver vizinhos válidos
             while vizinhos_validos:
                 
-                # Seleciona o melhor vizinho com menor custo
+                # Seleciona o melhor vizinho com menor custo, alem de garantir
+                # que este vizinho não voltara a ser lido dentro deste while
                 vizinho = heapq.heappop(vizinhos_validos)
-                custo_vizinho = self.custo_distancia_total(vizinho)
                 
+                # Verifica o custo do vizinho que esta sendo processado
+                custo_vizinho = self.custo_distancia_total(vizinho)
+                            
                 # Se o vizinho não estiver na lista tabu ou se o custo do vizinho 
                 # for menor que o melhor custo
                 if vizinho not in tabu or custo_vizinho < melhor_custo:
@@ -216,6 +230,10 @@ class grafo():
                         melhor_caminho_encontrado = melhor_caminho
                         melhor_custo_encontrado = melhor_custo
                     
+                    # Atualiza o pior caminho e o pior custo
+                    if melhor_custo > pior_custo:
+                        pior_caminho = melhor_caminho
+                        pior_custo = melhor_custo
                     
                     # Adiciona o vizinho na lista tabu
                     tabu.append(vizinho)
@@ -241,18 +259,22 @@ class grafo():
 
         console = Console()
         
-        console.print(f"\n\nArquivo: [bold cyan]{self.nome}[/bold cyan]")
+        console.print(f"\n\nArquivo: [bold green]{self.nome}[/bold green]")
         
-        console.print(f"Lista tabu com tamanho {tabu_size} feito com {max_iter} iterações")
+        console.print(f"Lista tabu com tamanho [bold green]{tabu_size}[/bold green] feito com [bold green]{max_iter}[/bold green] iterações")
         
-        console.print(f"Tempo de Execução: {tempo_execucao:.4f} segundos")
+        console.print(f"Tempo de Execução: [bold green]{tempo_execucao:.4f}[/bold green] segundos")
         
-        console.print(f"\n\nCaminho Inicial: {self.solucao_inicial}, com custo {self.custo_solucao_inicial}\n")
+        console.print(f"Tempo para achar a solução inicial: [bold green]{end_solucao_inicial - start_solucao_inicial:.4f}[/bold green] segundos\n")
         
-        console.print(f"Caminho final encontrado: {melhor_caminho}, com custo {melhor_custo}\n")
+        console.print(f"\n\nCaminho Inicial: [bold yellow]{self.solucao_inicial}[/bold yellow], com custo [bold yellow]{self.custo_solucao_inicial}[/bold yellow]\n")
         
-        console.print(f"Melhor Caminho Encontrado: {melhor_caminho_encontrado}, com custo {melhor_custo_encontrado}\n\n")
+        console.print(f"Caminho final encontrado: [bold purple]{melhor_caminho}[/bold purple], com custo [bold purple]{melhor_custo}[bold purple]\n")
+        
+        console.print(f"Melhor Caminho Encontrado: [bold cyan]{melhor_caminho_encontrado}[/bold cyan], com custo [bold cyan]{melhor_custo_encontrado}[bold cyan]\n")
                   
+        console.print(f"Pior Caminho Encontrado: [bold red]{pior_caminho}[/bold red], com custo [bold red]{pior_custo}[/bold red]\n\n")          
+        
     def print_grafo(self):
           
         # Cria a tabela
