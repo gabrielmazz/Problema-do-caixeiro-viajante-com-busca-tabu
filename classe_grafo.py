@@ -257,6 +257,8 @@ class grafo():
         # Calcula o tempo de execução
         tempo_execucao = end - start
 
+        self.melhor_caminho_encontrado = melhor_caminho_encontrado
+
         console = Console()
         
         console.print(f"\n\nArquivo: [bold green]{self.nome}[/bold green]")
@@ -296,6 +298,28 @@ class grafo():
     
     def gera_grafico_grafos(self):
         
-        # Gera o gráfico
-        nx.draw(self.grafo, with_labels=True)
+        # Gera um gráfico do grafo onde ele pega o melhor caminho encontrado
+        # e printa ele em vermelho com uma seta indicando o caminho que ele
+        # percorreu
+        pos = nx.spring_layout(self.grafo)
+        
+        # Desenha as arestas do melhor caminho encontrado
+        caminho = [(self.melhor_caminho_encontrado[i], self.melhor_caminho_encontrado[i+1]) for i in range(len(self.melhor_caminho_encontrado) - 1)]
+        
+        # Desenha as setas
+        for (u, v) in caminho:
+            dx = pos[v][0] - pos[u][0]
+            dy = pos[v][1] - pos[u][1]
+            plt.arrow(pos[u][0], pos[u][1], dx, dy, shape='full', lw=0, length_includes_head=True, head_width=.08, color='cyan')
+        
+        # Desenha o grafo
+        nx.draw(self.grafo, pos, with_labels=True, node_color='skyblue', node_size=300, font_size=10, font_color='black')
+        
+        # Desenha o melhor caminho encontrado
+        nx.draw_networkx_nodes(self.grafo, pos, nodelist=self.melhor_caminho_encontrado, node_color='cyan', node_size=500)
+        
+        # Desenha as arestas
+        nx.draw_networkx_edges(self.grafo, pos, edgelist=caminho, edge_color='cyan', width=2)
+        
+        # Mostra o gráfico
         plt.show()
